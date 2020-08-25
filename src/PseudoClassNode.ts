@@ -12,11 +12,14 @@ export class PseudoClassNode implements IClassNode {
 	})();
 
 	private fields: PseudoCodeInstanceMember[] = (() => {
-		const props = Array.from(this.source.match(/(?<=\-)\w+/g) ?? []).map(
-			(propName) => new PseudoCodePrivateProp(propName, () => this.removeByName(propName)),
+		const props = (this.source.match(/(?<=-)\w+/g) ?? []).map(
+			(propName) => new PseudoCodePrivateProp(propName, '', () => this.removeByName(propName)),
 		);
-		const methods = Array.from(this.source.match(/(?<=\+)\w+/g) ?? []).map(
-			(methodName) => new PseudoCodeMethod(methodName, () => this.removeByName(methodName)),
+		const methods = (this.source.match(/(?<=\+)\w+/g) ?? []).map(
+			(methodName) =>
+				new PseudoCodeMethod(methodName, this.getMethodBody(methodName), () =>
+					this.removeByName(methodName),
+				),
 		);
 		return [...props, ...methods];
 	})();
@@ -25,6 +28,18 @@ export class PseudoClassNode implements IClassNode {
 
 	private removeByName(fieldName: string): void {
 		remove(this.fields, (field) => field.name === fieldName);
+	}
+
+	private getMethodBody(methodName: string): string | undefined {
+		const lines = this.source.split('\n');
+		const methodLineIndex = lines.findIndex((line) => line.match(methodName));
+		if (methodLineIndex === -1) {
+			return;
+		}
+		const nextLine = lines[methodLineIndex + 1];
+		if (nextLine.trim().startsWith('->')) {
+			return '\n' + nextLine;
+		}
 	}
 
 	getInstanceMember(fieldName: string): IInstanceMemberCode {
@@ -38,7 +53,7 @@ export class PseudoClassNode implements IClassNode {
 	}
 
 	initPrivatePropertyFor(node: IClassNode): IInstanceMemberCode {
-		const prop = new PseudoCodePrivateProp(node.name, () => this.removeByName(node.name));
+		const prop = new PseudoCodePrivateProp(node.name, '', () => this.removeByName(node.name));
 		this.fields.unshift(prop);
 		return prop;
 	}
@@ -54,7 +69,17 @@ export class PseudoClassNode implements IClassNode {
 }
 
 export abstract class PseudoCodeInstanceMember implements IInstanceMemberCode {
-	constructor(public name: string, private onRemove: () => void = noop) {}
+	isPrivate: boolean = false;
+
+	constructor(
+		public name: string,
+		protected body: string = '',
+		private onRemove: () => void = noop,
+	) {}
+
+	getDependencyNames(): string[] {
+		return [];
+	}
 
 	delegateTo(field: IInstanceMemberCode): void {}
 
@@ -66,7 +91,9 @@ export abstract class PseudoCodeInstanceMember implements IInstanceMemberCode {
 }
 
 export class PseudoCodeMethod extends PseudoCodeInstanceMember {
-	private body = '';
+	getDependencyNames(): string[] {
+		return this.body.match(/(?<=->)\w+/g) ?? [];
+	}
 
 	delegateTo(field: IInstanceMemberCode): void {
 		this.body = `\n\t\t->${camelCase(field.name)}.${this.name}()`;
@@ -78,6 +105,8 @@ export class PseudoCodeMethod extends PseudoCodeInstanceMember {
 }
 
 export class PseudoCodePrivateProp extends PseudoCodeInstanceMember {
+	isPrivate: boolean = true;
+
 	serialize(): string {
 		return `-${camelCase(this.name)}`;
 	}

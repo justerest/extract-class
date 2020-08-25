@@ -64,7 +64,15 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 		return this.node.getName();
 	}
 
+	get isPrivate(): boolean {
+		return this.node.getScope() === Scope.Private;
+	}
+
 	constructor(protected node: ClassInstanceMemberTypes) {}
+
+	getDependencyNames(): string[] {
+		return [];
+	}
 
 	delegateTo(field: IInstanceMemberCode): void {}
 
@@ -80,6 +88,15 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 export class TypescriptMethodMemberCode extends TypescriptInstanceMemberCode {
 	constructor(protected node: MethodDeclaration) {
 		super(node);
+	}
+
+	getDependencyNames(): string[] {
+		return (
+			this.node
+				.getBody()
+				?.getFullText()
+				.match(/(?<=this\.)\w+/) ?? []
+		);
 	}
 
 	delegateTo(field: IInstanceMemberCode): void {

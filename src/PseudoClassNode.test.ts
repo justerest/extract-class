@@ -20,6 +20,16 @@ describe(PseudoClassNode.name, () => {
 			`);
 			expect(new PseudoClassNode(source).serialize()).toBe(source);
 		});
+
+		it('should serialize methods with dependency', () => {
+			const source = f(`
+				A
+					+a()
+						->b()
+					+b()
+			`);
+			expect(new PseudoClassNode(source).serialize()).toBe(source);
+		});
 	});
 
 	describe(PseudoClassNode.prototype.getAllInstanceMembers.name, () => {
@@ -122,6 +132,19 @@ describe(PseudoClassNode.name, () => {
 				const node = new PseudoClassNode(source);
 				node.getInstanceMember('a').delegateTo(node.getInstanceMember('prop'));
 				expect(node.serialize()).toBe(expected);
+			});
+		});
+
+		describe(PseudoCodeMethod.prototype.getDependencyNames.name, () => {
+			it('should parse method dependencies', () => {
+				const source = `
+					A
+						+a()
+							->b()
+						+b()
+				`;
+				const node = new PseudoClassNode(source);
+				expect(node.getInstanceMember('a').getDependencyNames()).toEqual(['b']);
 			});
 		});
 	});
