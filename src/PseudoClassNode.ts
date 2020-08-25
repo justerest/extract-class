@@ -1,6 +1,6 @@
-import { camelCase } from 'lodash';
+import { camelCase, remove, noop } from 'lodash';
 
-import { IClassNode, IFieldCode } from './ClassCode';
+import { IClassNode, IInstanceMemberCode } from './ClassCode';
 import { formatPseudoCode } from './formatPseudoCode';
 import { assert } from './utils/assert';
 
@@ -11,31 +11,34 @@ export class PseudoClassNode implements IClassNode {
 		return name;
 	})();
 
-	private fields: PseudoCodeField[] = (() => {
+	private fields: PseudoCodeInstanceMember[] = (() => {
 		const props = Array.from(this.source.match(/(?<=\-)\w+/g) ?? []).map(
-			(methodName) => new PseudoCodePrivateProp(methodName),
+			(propName) => new PseudoCodePrivateProp(propName, () => this.removeByName(propName)),
 		);
 		const methods = Array.from(this.source.match(/(?<=\+)\w+/g) ?? []).map(
-			(methodName) => new PseudoCodeMethod(methodName),
+			(methodName) => new PseudoCodeMethod(methodName, () => this.removeByName(methodName)),
 		);
 		return [...props, ...methods];
 	})();
 
 	constructor(private source: string) {}
 
-	getField(fieldName: string): IFieldCode {
+	private removeByName(fieldName: string): void {
+		remove(this.fields, (field) => field.name === fieldName);
+	}
+
+	getInstanceMember(fieldName: string): IInstanceMemberCode {
 		const field = this.fields.find((f) => f.name === fieldName);
 		assert(field, `Field "${fieldName}" not found`);
-		assert(!field.removed, 'Field "${fieldName}" removed');
 		return field;
 	}
 
-	getAllFields(): IFieldCode[] {
+	getAllInstanceMembers(): IInstanceMemberCode[] {
 		return this.fields;
 	}
 
-	initPrivatePropertyFor(node: IClassNode): IFieldCode {
-		const prop = new PseudoCodePrivateProp(node.name);
+	initPrivatePropertyFor(node: IClassNode): IInstanceMemberCode {
+		const prop = new PseudoCodePrivateProp(node.name, () => this.removeByName(node.name));
 		this.fields.unshift(prop);
 		return prop;
 	}
@@ -45,32 +48,27 @@ export class PseudoClassNode implements IClassNode {
 	}
 
 	serialize(): string {
-		const [headLine] = this.source.trim().split('\n');
-		const fields = this.fields
-			.filter((field) => !field.removed)
-			.map((field) => `\t${field.serialize()}`);
-		return formatPseudoCode([headLine, ...fields].join('\n'));
+		const fields = this.fields.map((field) => `\t${field.serialize()}`);
+		return formatPseudoCode([this.name, ...fields].join('\n'));
 	}
 }
 
-export abstract class PseudoCodeField implements IFieldCode {
-	removed: boolean = false;
+export abstract class PseudoCodeInstanceMember implements IInstanceMemberCode {
+	constructor(public name: string, private onRemove: () => void = noop) {}
 
-	constructor(public name: string) {}
-
-	delegateTo(field: IFieldCode): void {}
+	delegateTo(field: IInstanceMemberCode): void {}
 
 	remove(): void {
-		this.removed = true;
+		this.onRemove();
 	}
 
 	abstract serialize(): string;
 }
 
-export class PseudoCodeMethod extends PseudoCodeField {
+export class PseudoCodeMethod extends PseudoCodeInstanceMember {
 	private body = '';
 
-	delegateTo(field: IFieldCode): void {
+	delegateTo(field: IInstanceMemberCode): void {
 		this.body = `\n\t\t->${camelCase(field.name)}.${this.name}()`;
 	}
 
@@ -79,7 +77,7 @@ export class PseudoCodeMethod extends PseudoCodeField {
 	}
 }
 
-export class PseudoCodePrivateProp extends PseudoCodeField {
+export class PseudoCodePrivateProp extends PseudoCodeInstanceMember {
 	serialize(): string {
 		return `-${camelCase(this.name)}`;
 	}

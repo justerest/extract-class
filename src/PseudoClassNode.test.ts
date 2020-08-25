@@ -22,28 +22,29 @@ describe(PseudoClassNode.name, () => {
 		});
 	});
 
-	describe(PseudoClassNode.prototype.getAllFields.name, () => {
+	describe(PseudoClassNode.prototype.getAllInstanceMembers.name, () => {
 		it('should returns methods', () => {
 			const source = `
 				A
 					+a()
 					+b()
 			`;
-			expect(new PseudoClassNode(source).getAllFields()).toEqual([
-				new PseudoCodeMethod('a'),
-				new PseudoCodeMethod('b'),
-			]);
+			expect(
+				new PseudoClassNode(source).getAllInstanceMembers().map((field) => field.serialize()),
+			).toEqual([new PseudoCodeMethod('a').serialize(), new PseudoCodeMethod('b').serialize()]);
 		});
 	});
 
-	describe(PseudoClassNode.prototype.getField.name, () => {
+	describe(PseudoClassNode.prototype.getInstanceMember.name, () => {
 		it('should returns method a', () => {
 			const source = `
 				A
 					+a()
 					+b()
 			`;
-			expect(new PseudoClassNode(source).getField('a')).toEqual(new PseudoCodeMethod('a'));
+			expect(new PseudoClassNode(source).getInstanceMember('a').serialize()).toEqual(
+				new PseudoCodeMethod('a').serialize(),
+			);
 		});
 	});
 
@@ -100,7 +101,7 @@ describe(PseudoClassNode.name, () => {
 						+a()
 				`);
 				const node = new PseudoClassNode(source);
-				node.getField('b').remove();
+				node.getInstanceMember('b').remove();
 				expect(node.serialize()).toBe(expected);
 			});
 		});
@@ -119,7 +120,7 @@ describe(PseudoClassNode.name, () => {
 							->prop.a()
 				`);
 				const node = new PseudoClassNode(source);
-				node.getField('a').delegateTo(node.getField('prop'));
+				node.getInstanceMember('a').delegateTo(node.getInstanceMember('prop'));
 				expect(node.serialize()).toBe(expected);
 			});
 		});

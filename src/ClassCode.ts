@@ -4,15 +4,15 @@ export interface ICode {
 
 export interface IClassNode extends ICode {
 	name: string;
-	getAllFields(): IFieldCode[];
-	getField(fieldName: string): IFieldCode;
-	initPrivatePropertyFor(node: IClassNode): IFieldCode;
+	getAllInstanceMembers(): IInstanceMemberCode[];
+	getInstanceMember(fieldName: string): IInstanceMemberCode;
+	initPrivatePropertyFor(classNode: IClassNode): IInstanceMemberCode;
 	clone(name: string): IClassNode;
 }
 
-export interface IFieldCode extends ICode {
+export interface IInstanceMemberCode extends ICode {
 	name: string;
-	delegateTo(field: IFieldCode): void;
+	delegateTo(field: IInstanceMemberCode): void;
 	remove(): void;
 }
 
@@ -25,13 +25,13 @@ export class ClassCode {
 		extractedClassCode.removeFieldsOmit(fieldNames);
 		const createdField = this.classNode.initPrivatePropertyFor(extractedClassNode);
 		fieldNames
-			.map((fieldName) => this.classNode.getField(fieldName))
+			.map((fieldName) => this.classNode.getInstanceMember(fieldName))
 			.forEach((field) => field.delegateTo(createdField));
 		return extractedClassCode;
 	}
 
 	private removeFieldsOmit(fieldNames: string[]): void {
-		const fields = this.classNode.getAllFields();
+		const fields = this.classNode.getAllInstanceMembers();
 		const excludedFields = fields.filter((field) => !fieldNames.includes(field.name));
 		excludedFields.forEach((field) => field.remove());
 	}

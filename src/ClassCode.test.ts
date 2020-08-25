@@ -14,12 +14,12 @@ describe(ClassCode.name, () => {
 				A
 					+a()
 			`);
-			const classCode = new ClassCode(new PseudoClassNode(source));
+			const classCode = createClassCode(source);
 			const extractedClassCode = classCode.extractClass('A', ['a']);
 			expect(extractedClassCode.serialize()).toBe(expected);
 		});
 
-		it('should delegate method to new property', () => {
+		it('should delegate call to new property', () => {
 			const source = `
 				Source
 					+a()
@@ -32,9 +32,13 @@ describe(ClassCode.name, () => {
 						->extracted.a()
 					+b()
 			`);
-			const classCode = new ClassCode(new PseudoClassNode(source));
+			const classCode = createClassCode(source);
 			classCode.extractClass('Extracted', ['a']);
 			expect(classCode.serialize()).toBe(expected);
 		});
 	});
 });
+
+function createClassCode(source: string) {
+	return new ClassCode(new PseudoClassNode(source));
+}
