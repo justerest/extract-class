@@ -1,8 +1,8 @@
 import { camelCase } from 'lodash';
 
-import { assert } from 'src/app/core/utils/assert';
 import { IClassNode, IFieldCode } from './ClassCode';
 import { formatPseudoCode } from './formatPseudoCode';
+import { assert } from './utils/assert';
 
 export class PseudoClassNode implements IClassNode {
 	name: string = (() => {
