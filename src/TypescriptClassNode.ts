@@ -71,6 +71,10 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 
 	constructor(protected node: ClassInstanceMemberTypes) {}
 
+	markAsPublic(): void {
+		this.node.setScope(undefined);
+	}
+
 	getDependencyNames(): string[] {
 		return [];
 	}
@@ -96,7 +100,7 @@ export class TypescriptMethodMemberCode extends TypescriptInstanceMemberCode {
 			this.node
 				.getBody()
 				?.getFullText()
-				.match(/(?<=this\.)\w+/) ?? []
+				.match(/(?<=this\.)\w+/g) ?? []
 		);
 	}
 

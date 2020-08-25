@@ -18,7 +18,7 @@ describe(ClassCode.name, () => {
 			`;
 			const classCode = createClassCode(source);
 			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsCode(extractedClassCode.serialize()).toEqual(expected);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
 		});
 
 		it('should delegate call to new property', () => {
@@ -41,7 +41,7 @@ describe(ClassCode.name, () => {
 			`;
 			const classCode = createClassCode(source);
 			classCode.extractClass('Extracted', ['a']);
-			expectTsCode(classCode.serialize()).toEqual(expected);
+			expectTsClassCode(classCode).toEqual(expected);
 		});
 
 		it('should add dependency method to new class', () => {
@@ -65,7 +65,7 @@ describe(ClassCode.name, () => {
 			`;
 			const classCode = createClassCode(source);
 			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsCode(extractedClassCode.serialize()).toEqual(expected);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
 		});
 
 		it('should remove private dependency method from source if not used', () => {
@@ -89,13 +89,216 @@ describe(ClassCode.name, () => {
 			`;
 			const classCode = createClassCode(source);
 			classCode.extractClass('Extracted', ['a']);
-			expectTsCode(classCode.serialize()).toEqual(expected);
+			expectTsClassCode(classCode).toEqual(expected);
+		});
+
+		it('should remove private dependency method from source if not used recursively', () => {
+			const source = `
+				class Source{
+					a(){
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+		`;
+			const expected = `
+				class Source{
+					private	extracted: Extracted = new Extracted();
+					
+					a(){
+						return this.extracted.a();
+					}
+				}
+			`;
+			const classCode = createClassCode(source);
+			classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(classCode).toEqual(expected);
+		});
+
+		it('should add dependency methods to extracted class recursively', () => {
+			const source = `
+				class Source{
+					a(){
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+		`;
+			const expected = `
+				class Extracted{
+					a(){
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+			`;
+			const classCode = createClassCode(source);
+			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
+		});
+
+		it('should not add unused private methods to extracted class', () => {
+			const source = `
+				class Source{
+					a(){}
+
+					d(){
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+		`;
+			const expected = `
+				class Extracted{
+					a(){}
+				}
+			`;
+			const classCode = createClassCode(source);
+			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
+		});
+
+		it('should mark moved private methods to extracted class as public', () => {
+			const source = `
+				class Source{
+					private a(){
+						this.b();
+					}
+
+					d(){
+						this.a();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+		`;
+			const expected = `
+				class Extracted{
+					a(){
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+			`;
+			const classCode = createClassCode(source);
+			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
+		});
+
+		it('should mark moved private dependency methods to extracted class as public', () => {
+			const source = `
+				class Source{
+					private a(){
+						this.b();
+					}
+
+					d(){
+						this.a();
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+		`;
+			const expected = `
+				class Extracted{
+					a(){
+						this.b();
+					}
+					
+					b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+			`;
+			const classCode = createClassCode(source);
+			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
+		});
+
+		it('should delegate moved private methods to extracted class prop', () => {
+			const source = `
+				class Source{
+					private a(){
+						this.b();
+					}
+
+					d(){
+						this.a();
+						this.b();
+					}
+					
+					private	b(){
+						this.c();
+					}
+
+					private c(){}
+				}
+		`;
+			const expected = `
+				class Source{
+					private extracted: Extracted = new Extracted();
+
+					private a(){
+						return this.extracted.a();
+					}
+
+					d(){
+						this.a();
+						this.b();
+					}
+					
+					private	b(){
+						return this.extracted.b();
+					}
+				}
+			`;
+			const classCode = createClassCode(source);
+			classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(classCode).toEqual(expected);
 		});
 	});
 });
 
-function expectTsCode(value: string) {
-	return { toEqual: (expected: string) => expect(formatTs(value)).toBe(formatTs(expected)) };
+function expectTsClassCode(classCode: ClassCode) {
+	return {
+		toEqual: (expected: string) => expect(formatTs(classCode.serialize())).toBe(formatTs(expected)),
+	};
 }
 
 function createClassCode(source: string): ClassCode {
