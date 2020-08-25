@@ -10,17 +10,9 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extract-class.helloWorld"
+		"onLanguage:typescript"
 	],
 	"main": "./out/extension.js",
-	"contributes": {
-		"commands": [
-			{
-				"command": "extract-class.helloWorld",
-				"title": "Hello World"
-			}
-		]
-	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
@@ -30,7 +22,8 @@
 		"jest:watch": "jest --watch"
 	},
 	"dependencies": {
-		"lodash": "^4.17.20"
+		"lodash": "^4.17.20",
+		"ts-morph": "^8.1.0"
 	},
 	"devDependencies": {
 		"@types/lodash": "^4.14.160",
