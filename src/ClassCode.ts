@@ -42,20 +42,12 @@ export class ClassCode {
 
 	private removeFieldsOmit(fieldNames: string[]): void {
 		const allFields = this.node.getAllInstanceMembers();
-		const dependencyFieldNames = fieldNames.flatMap((fieldName) => [
-			...this.getFieldDependenciesRecursively(fieldName),
-		]);
+		const dependencyFieldNames = fieldNames.flatMap((fieldName) =>
+			new GetFieldDependenciesRecursivelyOperation(this.node).execute(fieldName),
+		);
 		const usedFieldNames = new Set([...fieldNames, ...dependencyFieldNames]);
 		const fieldsToRemove = allFields.filter((field) => !usedFieldNames.has(field.name));
 		fieldsToRemove.forEach((field) => field.remove());
-	}
-
-	private *getFieldDependenciesRecursively(fieldName: string): Iterable<string> {
-		const names = this.node.getInstanceMember(fieldName).getDependencyNames();
-		for (const name of names) {
-			yield name;
-			yield* this.getFieldDependenciesRecursively(name);
-		}
 	}
 
 	private getMovedFields(extractedClassNode: IClassNode): IInstanceMemberCode[] {
@@ -88,5 +80,26 @@ export class ClassCode {
 
 	serialize(): string {
 		return this.node.serialize();
+	}
+}
+
+class GetFieldDependenciesRecursivelyOperation {
+	private dependencies: Set<string> = new Set();
+
+	constructor(private node: IClassNode) {}
+
+	execute(fieldName: string): string[] {
+		return [...this.getFieldDependenciesRecursively(fieldName)];
+	}
+
+	private *getFieldDependenciesRecursively(fieldName: string): Iterable<string> {
+		const names = this.node.getInstanceMember(fieldName).getDependencyNames();
+		for (const name of names) {
+			if (!this.dependencies.has(name)) {
+				this.dependencies.add(name);
+				yield name;
+			}
+			yield* this.getFieldDependenciesRecursively(name);
+		}
 	}
 }

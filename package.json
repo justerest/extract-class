@@ -3,6 +3,7 @@
 	"displayName": "extract-class",
 	"description": "Extract class refactoring for typescript",
 	"version": "0.0.1",
+	"publisher": "justerest",
 	"engines": {
 		"vscode": "^1.48.0"
 	},

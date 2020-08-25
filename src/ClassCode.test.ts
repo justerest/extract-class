@@ -292,6 +292,107 @@ describe(ClassCode.name, () => {
 			classCode.extractClass('Extracted', ['a']);
 			expectTsClassCode(classCode).toEqual(expected);
 		});
+
+		it('should create getter for moved public property', () => {
+			const source = `
+				class Source{
+					prop:number = 1;
+					a():void{
+						console.log(this.prop);
+					}
+				}
+		`;
+			const expected = `
+				class Source{
+					private extracted: Extracted = new Extracted();
+
+					get prop(): number{
+						return this.extracted.prop;
+					}
+
+					a():void{
+						return	this.extracted.a();
+					}
+				}
+			`;
+			const classCode = createClassCode(source);
+			classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(classCode).toEqual(expected);
+		});
+
+		it('should init new class with params', () => {
+			const source = `
+				class Source{
+					constructor(private prop: number){}
+
+					a():void{
+						console.log(this.prop);
+					}
+				}
+		`;
+			const expected = `
+				class Source{
+					private extracted: Extracted = new Extracted(this.prop);
+
+					constructor(private prop: number){}
+
+					a():void{
+						return	this.extracted.a();
+					}
+				}
+			`;
+			const classCode = createClassCode(source);
+			classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(classCode).toEqual(expected);
+		});
+
+		it('should move ctor fields to extracted class if used', () => {
+			const source = `
+				class Source{
+					constructor(private prop: number){}
+
+					a():void{
+						console.log(this.prop);
+					}
+				}
+		`;
+			const expected = `
+				class Extracted{
+					constructor(private prop: number){}
+
+					a():void{
+						console.log(this.prop);
+					}
+				}
+			`;
+			const classCode = createClassCode(source);
+			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(extractedClassCode).toEqual(expected);
+		});
+
+		it('should not init new class with unused params', () => {
+			const source = `
+				class Source{
+					constructor(private prop: number){}
+
+					a():void{}
+				}
+		`;
+			const expected = `
+				class Source{
+					private extracted: Extracted = new Extracted();
+
+					constructor(){}
+
+					a():void{
+						return	this.extracted.a();
+					}
+				}
+			`;
+			const classCode = createClassCode(source);
+			classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(classCode).toEqual(expected);
+		});
 	});
 });
 

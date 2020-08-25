@@ -5,6 +5,8 @@ import {
 	Project,
 	MethodDeclaration,
 	Scope,
+	PropertyDeclaration,
+	ParameterDeclaration,
 } from 'ts-morph';
 import { camelCase } from 'lodash';
 import { prettyTs } from './formatTs';
@@ -32,16 +34,23 @@ export class TypescriptClassNode implements IClassNode {
 		return TypescriptInstanceMemberCode.create(this.node.getInstanceMemberOrThrow(fieldName));
 	}
 
-	initPrivatePropertyFor(classNode: IClassNode): IInstanceMemberCode {
+	initPrivatePropertyFor(classNode: TypescriptClassNode): IInstanceMemberCode {
 		const prop = this.node.addProperty({
 			scope: Scope.Private,
 			name: camelCase(classNode.name),
 			type: classNode.name,
-			initializer: `new ${classNode.name}()`,
+			initializer: `new ${classNode.name}(${classNode
+				.getCtorParams()
+				.map((param) => `this.${param.getName()}`)
+				.join(', ')})`,
 			trailingTrivia: '\n\n',
 		});
 		prop.setOrder(0);
 		return TypescriptInstanceMemberCode.create(prop);
+	}
+
+	private getCtorParams(): ParameterDeclaration[] {
+		return this.node.getConstructors()[0]?.getParameters() ?? [];
 	}
 
 	clone(name: string): IClassNode {
@@ -56,7 +65,13 @@ export class TypescriptClassNode implements IClassNode {
 export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 	static create(node: ClassInstanceMemberTypes): TypescriptInstanceMemberCode {
 		if (node instanceof MethodDeclaration) {
-			return new TypescriptMethodMemberCode(node);
+			return new TypescriptMethodCode(node);
+		}
+		if (node instanceof PropertyDeclaration) {
+			return new TypescriptPropertyCode(node);
+		}
+		if (node instanceof ParameterDeclaration) {
+			return new TypescriptParameterCode(node);
 		}
 		return new TypescriptInstanceMemberCode(node);
 	}
@@ -76,7 +91,7 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 	}
 
 	getDependencyNames(): string[] {
-		return [];
+		return this.node.getFullText().match(/(?<=this\.)\w+/g) ?? [];
 	}
 
 	delegateTo(field: IInstanceMemberCode): void {}
@@ -90,7 +105,31 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 	}
 }
 
-export class TypescriptMethodMemberCode extends TypescriptInstanceMemberCode {
+export class TypescriptPropertyCode extends TypescriptInstanceMemberCode {
+	constructor(protected node: PropertyDeclaration) {
+		super(node);
+	}
+
+	delegateTo(field: IInstanceMemberCode): void {
+		const index = this.node.getChildIndex();
+		const params = {
+			name: this.name,
+			scope: this.node.getScope().replace(Scope.Public, '') as Scope,
+			returnType: this.node.getTypeNode()?.getText(),
+			statements: `return this.${field.name}.${this.name}`,
+		};
+		const parent = this.node.getParentOrThrow();
+		this.node.remove();
+		this.node = parent.addGetAccessor(params) as any;
+		this.node.setOrder(index);
+	}
+}
+
+export class TypescriptParameterCode extends TypescriptInstanceMemberCode {
+	markAsPublic(): void {}
+}
+
+export class TypescriptMethodCode extends TypescriptInstanceMemberCode {
 	constructor(protected node: MethodDeclaration) {
 		super(node);
 	}

@@ -28,7 +28,7 @@ export class ExtractClassVSCodeCommand {
 		const classDeclaration = this.getSelectedClassDeclaration();
 		const classDeclarationSource = classDeclaration.getFullText();
 		const methodsToExtract = await vscode.window.showQuickPick(
-			[...classDeclaration.getInstanceMethods().map((field) => field.getName())],
+			[...classDeclaration.getInstanceMembers().map((field) => field.getName())],
 			{ placeHolder: 'Select methods to extract', canPickMany: true },
 		);
 		if (!methodsToExtract?.length) {
@@ -39,7 +39,7 @@ export class ExtractClassVSCodeCommand {
 		const extractedClassCode = classCode.extractClass('ExtractedClass', methodsToExtract);
 		this.replace(
 			classDeclarationSource,
-			classCode.serialize() + '\n\n' + extractedClassCode.serialize(),
+			`\n\n${classCode.serialize()}\n${extractedClassCode.serialize()}\n`,
 		);
 	}
 

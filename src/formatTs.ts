@@ -5,5 +5,5 @@ export function formatTs(value: string): string {
 }
 
 export function prettyTs(value: string) {
-	return format(value, { parser: 'typescript' });
+	return format(value, { parser: 'typescript', singleQuote: true });
 }
