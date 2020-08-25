@@ -1,5 +1,9 @@
 import { format } from 'prettier';
 
 export function formatTs(value: string): string {
-	return format(value, { parser: 'typescript' }).replace(/\n+/g, '\n');
+	return prettyTs(value).replace(/\n+/g, '\n');
+}
+
+export function prettyTs(value: string) {
+	return format(value, { parser: 'typescript' });
 }

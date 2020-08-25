@@ -7,6 +7,7 @@ import {
 	Scope,
 } from 'ts-morph';
 import { camelCase } from 'lodash';
+import { prettyTs } from './formatTs';
 
 export class TypescriptClassNode implements IClassNode {
 	static from(source: string): TypescriptClassNode {
@@ -48,7 +49,7 @@ export class TypescriptClassNode implements IClassNode {
 	}
 
 	serialize(): string {
-		return this.node.getFullText();
+		return prettyTs(this.node.getFullText());
 	}
 }
 

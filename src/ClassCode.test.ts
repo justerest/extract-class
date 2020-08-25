@@ -1,5 +1,4 @@
 import { ClassCode } from './ClassCode';
-import { PseudoClassNode } from './PseudoClassNode';
 import { TypescriptClassNode } from './TypescriptClassNode';
 import { formatTs } from './formatTs';
 
@@ -12,14 +11,14 @@ describe(ClassCode.name, () => {
 					b(){}
 				}
 			`;
-			const expected = formatTs(`
+			const expected = `
 				class Extracted{
 					a(){}
 				}
-			`);
-			const classCode = new ClassCode(TypescriptClassNode.from(source));
+			`;
+			const classCode = createClassCode(source);
 			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expect(formatTs(extractedClassCode.serialize())).toBe(expected);
+			expectTsCode(extractedClassCode.serialize()).toEqual(expected);
 		});
 
 		it('should delegate call to new property', () => {
@@ -29,7 +28,7 @@ describe(ClassCode.name, () => {
 					b(): void {}
 				}
 			`;
-			const expected = formatTs(`
+			const expected = `
 				class Source{
 					private extracted: Extracted = new Extracted();
 
@@ -39,10 +38,10 @@ describe(ClassCode.name, () => {
 					
 					b(): void {}
 				}
-			`);
-			const classCode = new ClassCode(TypescriptClassNode.from(source));
+			`;
+			const classCode = createClassCode(source);
 			classCode.extractClass('Extracted', ['a']);
-			expect(formatTs(classCode.serialize())).toBe(expected);
+			expectTsCode(classCode.serialize()).toEqual(expected);
 		});
 
 		it('should add dependency method to new class', () => {
@@ -55,7 +54,7 @@ describe(ClassCode.name, () => {
 					b(){}
 				}
 			`;
-			const expected = formatTs(`
+			const expected = `
 				class Extracted{
 					a(){
 						this.b();
@@ -63,23 +62,23 @@ describe(ClassCode.name, () => {
 					
 					b(){}
 				}
-			`);
-			const classCode = new ClassCode(TypescriptClassNode.from(source));
+			`;
+			const classCode = createClassCode(source);
 			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expect(formatTs(extractedClassCode.serialize())).toBe(expected);
+			expectTsCode(extractedClassCode.serialize()).toEqual(expected);
 		});
 
 		it('should remove private dependency method from source if not used', () => {
 			const source = `
-			class Source{
-				a(){
-					this.b();
+				class Source{
+					a(){
+						this.b();
+					}
+					
+					private	b(){}
 				}
-				
-				private	b(){}
-			}
 		`;
-			const expected = formatTs(`
+			const expected = `
 				class Source{
 					private	extracted: Extracted = new Extracted();
 					
@@ -87,14 +86,18 @@ describe(ClassCode.name, () => {
 						return this.extracted.a();
 					}
 				}
-			`);
-			const classCode = new ClassCode(TypescriptClassNode.from(source));
+			`;
+			const classCode = createClassCode(source);
 			classCode.extractClass('Extracted', ['a']);
-			expect(formatTs(classCode.serialize())).toBe(expected);
+			expectTsCode(classCode.serialize()).toEqual(expected);
 		});
 	});
 });
 
-function createClassCode(source: string) {
-	return new ClassCode(new PseudoClassNode(source));
+function expectTsCode(value: string) {
+	return { toEqual: (expected: string) => expect(formatTs(value)).toBe(formatTs(expected)) };
+}
+
+function createClassCode(source: string): ClassCode {
+	return new ClassCode(TypescriptClassNode.from(source));
 }
