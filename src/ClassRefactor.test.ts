@@ -1,9 +1,9 @@
-import { ClassCode } from './ClassCode';
+import { ClassRefactor } from './ClassRefactor';
 import { TypescriptClassNode } from './TypescriptClassNode';
 import { formatTs } from './formatTs';
 
-describe(ClassCode.name, () => {
-	describe(ClassCode.prototype.extractClass.name, () => {
+describe(ClassRefactor.name, () => {
+	describe(ClassRefactor.prototype.extractClass.name, () => {
 		it('should extract new class with sended method', () => {
 			const source = `
 				class Source{
@@ -16,9 +16,9 @@ describe(ClassCode.name, () => {
 					a(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should delegate call to new property', () => {
@@ -39,9 +39,9 @@ describe(ClassCode.name, () => {
 					b(): void {}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should add dependency method to new class', () => {
@@ -63,9 +63,9 @@ describe(ClassCode.name, () => {
 					b(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should remove private dependency method from source if not used', () => {
@@ -87,9 +87,9 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should remove private dependency method from source if not used recursively', () => {
@@ -115,9 +115,9 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should not remove private dependency method from source if not moved', () => {
@@ -136,9 +136,9 @@ describe(ClassCode.name, () => {
 					private	b(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should add dependency methods to extracted class recursively', () => {
@@ -168,9 +168,9 @@ describe(ClassCode.name, () => {
 					private c(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should not add unused private methods to extracted class', () => {
@@ -194,9 +194,9 @@ describe(ClassCode.name, () => {
 					a(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should mark moved private methods to extracted class as public', () => {
@@ -230,9 +230,9 @@ describe(ClassCode.name, () => {
 					private c(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should mark moved private dependency methods to extracted class as public', () => {
@@ -267,9 +267,9 @@ describe(ClassCode.name, () => {
 					private c(){}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should delegate moved private methods to extracted class prop', () => {
@@ -309,9 +309,9 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should create getter for moved public property', () => {
@@ -336,9 +336,9 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should init new class with params', () => {
@@ -362,9 +362,9 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
 		it('should move ctor fields to extracted class if used', () => {
@@ -386,9 +386,9 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			const extractedClassCode = classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(extractedClassCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
 		});
 
 		it('should not init new class with unused params', () => {
@@ -410,19 +410,19 @@ describe(ClassCode.name, () => {
 					}
 				}
 			`;
-			const classCode = createClassCode(source);
-			classCode.extractClass('Extracted', ['a']);
-			expectTsClassCode(classCode).toEqual(expected);
+			const classRefactor = createClassRefactor(source);
+			classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 	});
 });
 
-function expectTsClassCode(classCode: ClassCode) {
+function expectTsClassRefactor(classRefactor: ClassRefactor) {
 	return {
-		toEqual: (expected: string) => expect(formatTs(classCode.serialize())).toBe(formatTs(expected)),
+		toEqual: (expected: string) => expect(formatTs(classRefactor.serialize())).toBe(formatTs(expected)),
 	};
 }
 
-function createClassCode(source: string): ClassCode {
-	return new ClassCode(TypescriptClassNode.from(source));
+function createClassRefactor(source: string): ClassRefactor {
+	return new ClassRefactor(TypescriptClassNode.from(source));
 }

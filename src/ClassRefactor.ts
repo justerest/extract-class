@@ -19,12 +19,12 @@ export interface IInstanceMemberCode extends ICode {
 	remove(): void;
 }
 
-export class ClassCode {
+export class ClassRefactor {
 	constructor(private node: IClassNode) {}
 
-	extractClass(className: string, fieldNames: string[]): ClassCode {
-		return new ClassCode(
-			ExtractClassOperation.create(this.node, className, fieldNames).getExtractedNode(),
+	extractClass(className: string, fieldNames: string[]): ClassRefactor {
+		return new ClassRefactor(
+			ExtractClassOperation.execute(this.node, className, fieldNames).getExtractedNode(),
 		);
 	}
 
@@ -34,14 +34,14 @@ export class ClassCode {
 }
 
 class ExtractClassOperation {
-	static create(
+	static execute(
 		sourceNode: IClassNode,
 		extractingClassName: string,
 		fieldsToExtract: string[],
 	): ExtractClassOperation {
 		return new ExtractClassOperation(
 			sourceNode,
-			CloneClassOperation.create(sourceNode, extractingClassName, fieldsToExtract).getClonedNode(),
+			CloneClassOperation.execute(sourceNode, extractingClassName, fieldsToExtract).getClonedNode(),
 			new Set(fieldsToExtract),
 		);
 	}
@@ -62,7 +62,7 @@ class ExtractClassOperation {
 
 	private execute(): void {
 		this.delegateCallsToExtractedClass();
-		this.deleteUnusedPrivateMovedFieldsFromSource();
+		this.deleteUnusedPrivateMovedFields();
 		this.markExtractedFieldsAsPublic();
 	}
 
@@ -74,15 +74,15 @@ class ExtractClassOperation {
 		movedFields.forEach((field) => field.delegateTo(extractedClassProp));
 	}
 
-	private deleteUnusedPrivateMovedFieldsFromSource(): void {
-		const fieldsToRemove = this.getUnusedPrivateMovedFieldsFromSource();
+	private deleteUnusedPrivateMovedFields(): void {
+		const fieldsToRemove = this.getUnusedPrivateMovedFields();
 		fieldsToRemove.forEach((field) => field.remove());
-		if (this.getUnusedPrivateMovedFieldsFromSource().length) {
-			this.deleteUnusedPrivateMovedFieldsFromSource();
+		if (this.getUnusedPrivateMovedFields().length) {
+			this.deleteUnusedPrivateMovedFields();
 		}
 	}
 
-	private getUnusedPrivateMovedFieldsFromSource(): IInstanceMemberCode[] {
+	private getUnusedPrivateMovedFields(): IInstanceMemberCode[] {
 		const allFields = this.sourceNode.getAllInstanceMembers();
 		const usedFieldNames = new Set(allFields.flatMap((field) => field.getDependencyNames()));
 		const extractedFieldNames = new Set(this.extractedFields.map((field) => field.name));
@@ -103,7 +103,7 @@ class ExtractClassOperation {
 }
 
 class CloneClassOperation {
-	static create(
+	static execute(
 		sourceNode: IClassNode,
 		newClassName: string,
 		fieldsToExtract: string[],
@@ -112,15 +112,11 @@ class CloneClassOperation {
 	}
 
 	private constructor(private clonedNode: IClassNode, private fieldsToExtract: string[]) {
-		this.execute();
+		this.removeFieldsOmitDependencies();
 	}
 
 	getClonedNode(): IClassNode {
 		return this.clonedNode;
-	}
-
-	private execute() {
-		this.removeFieldsOmitDependencies();
 	}
 
 	private removeFieldsOmitDependencies(): void {

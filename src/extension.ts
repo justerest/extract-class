@@ -6,7 +6,7 @@ import {
 	Scope,
 	StructureKind,
 } from 'ts-morph';
-import { ClassCode } from './ClassCode';
+import { ClassRefactor } from './ClassRefactor';
 import { TypescriptClassNode } from './TypescriptClassNode';
 
 const COMMAND = 'extract-class.extract-class';
@@ -33,6 +33,14 @@ export class ExtractClassVSCodeCommand {
 	constructor(private textEditor: vscode.TextEditor) {}
 
 	async execute(): Promise<void> {
+		try {
+			await this.tryExecute();
+		} catch (error) {
+			vscode.window.showErrorMessage(JSON.stringify(error));
+		}
+	}
+
+	private async tryExecute(): Promise<void> {
 		const classDeclaration = this.getSelectedClassDeclaration();
 		const classDeclarationSource = classDeclaration.getFullText();
 		const methodsToExtract = await this.showQuickPick(classDeclaration);
@@ -40,11 +48,11 @@ export class ExtractClassVSCodeCommand {
 			vscode.window.showInformationMessage('Class extraction canceled');
 			return;
 		}
-		const classCode = new ClassCode(new TypescriptClassNode(classDeclaration));
-		const extractedClassCode = classCode.extractClass('ExtractedClass', methodsToExtract);
+		const classRefactor = new ClassRefactor(new TypescriptClassNode(classDeclaration));
+		const extractedClassRefactor = classRefactor.extractClass('ExtractedClass', methodsToExtract);
 		await this.replace(
 			classDeclarationSource,
-			`\n\n${classCode.serialize()}\n${extractedClassCode.serialize()}\n`,
+			`\n\n${classRefactor.serialize()}\n${extractedClassRefactor.serialize()}\n`,
 		);
 	}
 

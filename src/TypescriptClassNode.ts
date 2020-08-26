@@ -1,4 +1,4 @@
-import { IClassNode, IInstanceMemberCode } from './ClassCode';
+import { IClassNode, IInstanceMemberCode } from './ClassRefactor';
 import {
 	ClassDeclaration,
 	ClassInstanceMemberTypes,
