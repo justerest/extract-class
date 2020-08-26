@@ -1,4 +1,4 @@
-import { IClassNode, IInstanceMemberCode } from './ClassRefactor';
+import { ClassNode, InstanceMember } from './ClassNode';
 import {
 	ClassDeclaration,
 	ClassInstanceMemberTypes,
@@ -11,7 +11,7 @@ import {
 import { camelCase } from 'lodash';
 import { prettyTs } from './formatTs';
 
-export class TypescriptClassNode implements IClassNode {
+export class TypescriptClassNode implements ClassNode {
 	static from(source: string): TypescriptClassNode {
 		const className = source.match(/class \w+/)?.[0].replace('class ', '') ?? '';
 		const node = new Project().createSourceFile('', source).getClassOrThrow(className);
@@ -24,17 +24,17 @@ export class TypescriptClassNode implements IClassNode {
 
 	constructor(private node: ClassDeclaration) {}
 
-	getAllInstanceMembers(): IInstanceMemberCode[] {
+	getAllInstanceMembers(): InstanceMember[] {
 		return this.node
 			.getInstanceMembers()
 			.map((field) => TypescriptInstanceMemberCode.create(field));
 	}
 
-	getInstanceMember(fieldName: string): IInstanceMemberCode {
+	getInstanceMember(fieldName: string): InstanceMember {
 		return TypescriptInstanceMemberCode.create(this.node.getInstanceMemberOrThrow(fieldName));
 	}
 
-	initPrivatePropertyFor(classNode: TypescriptClassNode): IInstanceMemberCode {
+	initPrivatePropertyFor(classNode: TypescriptClassNode): InstanceMember {
 		const prop = this.node.addProperty({
 			scope: Scope.Private,
 			name: camelCase(classNode.name),
@@ -53,7 +53,7 @@ export class TypescriptClassNode implements IClassNode {
 		return this.node.getConstructors()[0]?.getParameters() ?? [];
 	}
 
-	clone(name: string): IClassNode {
+	clone(name: string): ClassNode {
 		return TypescriptClassNode.from(this.serialize().replace(/class \w+/, `class ${name}`));
 	}
 
@@ -62,7 +62,7 @@ export class TypescriptClassNode implements IClassNode {
 	}
 }
 
-export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
+export class TypescriptInstanceMemberCode implements InstanceMember {
 	static create(node: ClassInstanceMemberTypes): TypescriptInstanceMemberCode {
 		if (node instanceof MethodDeclaration) {
 			return new TypescriptMethodCode(node);
@@ -80,11 +80,11 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 		return this.node.getName();
 	}
 
-	get isPrivate(): boolean {
+	constructor(protected node: ClassInstanceMemberTypes) {}
+
+	isPrivate(): boolean {
 		return this.node.getScope() === Scope.Private;
 	}
-
-	constructor(protected node: ClassInstanceMemberTypes) {}
 
 	markAsPublic(): void {
 		this.node.setScope(undefined);
@@ -94,14 +94,10 @@ export class TypescriptInstanceMemberCode implements IInstanceMemberCode {
 		return this.node.getFullText().match(/(?<=this\.)\w+/g) ?? [];
 	}
 
-	delegateTo(field: IInstanceMemberCode): void {}
+	delegateTo(field: InstanceMember): void {}
 
 	remove(): void {
 		this.node.remove();
-	}
-
-	serialize(): string {
-		return this.node.getFullText();
 	}
 }
 
@@ -110,7 +106,7 @@ export class TypescriptPropertyCode extends TypescriptInstanceMemberCode {
 		super(node);
 	}
 
-	delegateTo(field: IInstanceMemberCode): void {
+	delegateTo(field: InstanceMember): void {
 		const index = this.node.getChildIndex();
 		const params = {
 			name: this.name,
@@ -143,7 +139,7 @@ export class TypescriptMethodCode extends TypescriptInstanceMemberCode {
 		);
 	}
 
-	delegateTo(field: IInstanceMemberCode): void {
+	delegateTo(field: InstanceMember): void {
 		this.node.setBodyText(
 			`return this.${field.name}.${this.name}(${this.node
 				.getParameters()

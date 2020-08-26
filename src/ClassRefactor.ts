@@ -1,26 +1,7 @@
-export interface ICode {
-	serialize(): string;
-}
-
-export interface IClassNode extends ICode {
-	name: string;
-	getAllInstanceMembers(): IInstanceMemberCode[];
-	getInstanceMember(fieldName: string): IInstanceMemberCode;
-	initPrivatePropertyFor(classNode: IClassNode): IInstanceMemberCode;
-	clone(name: string): IClassNode;
-}
-
-export interface IInstanceMemberCode extends ICode {
-	name: string;
-	isPrivate: boolean;
-	getDependencyNames(): string[];
-	delegateTo(field: IInstanceMemberCode): void;
-	markAsPublic(): void;
-	remove(): void;
-}
+import { ClassNode, InstanceMember } from './ClassNode';
 
 export class ClassRefactor {
-	constructor(private node: IClassNode) {}
+	constructor(private node: ClassNode) {}
 
 	extractClass(className: string, fieldNames: string[]): ClassRefactor {
 		const extracted = ExtractingClassRefactor.create(this.node, className, fieldNames);
@@ -39,7 +20,7 @@ export class ClassRefactor {
 
 class ExtractingClassRefactor {
 	static create(
-		sourceNode: IClassNode,
+		sourceNode: ClassNode,
 		className: string,
 		fieldNames: string[],
 	): ExtractingClassRefactor {
@@ -47,8 +28,8 @@ class ExtractingClassRefactor {
 	}
 
 	private constructor(
-		private sourceNode: IClassNode,
-		private clonedNode: IClassNode,
+		private sourceNode: ClassNode,
+		private clonedNode: ClassNode,
 		private fieldsToExtract: string[],
 	) {}
 
@@ -63,7 +44,7 @@ class ExtractingClassRefactor {
 	}
 
 	private getFieldDependenciesRecursively(fieldName: string): string[] {
-		return new FieldDependencies(this.clonedNode, fieldName).getAllDependencies();
+		return new FieldDependencies(this.clonedNode, fieldName).getAll();
 	}
 
 	markDelegatedFieldsAsPublic(): void {
@@ -77,13 +58,13 @@ class ExtractingClassRefactor {
 			.forEach((field) => field.markAsPublic());
 	}
 
-	getNode(): IClassNode {
+	getNode(): ClassNode {
 		return this.clonedNode;
 	}
 }
 
 class SourceClassRefactor {
-	constructor(private sourceNode: IClassNode, private clonedNode: IClassNode) {}
+	constructor(private sourceNode: ClassNode, private clonedNode: ClassNode) {}
 
 	delegateCallsToExtractedClass(): void {
 		const extractedClassProp = this.sourceNode.initPrivatePropertyFor(this.clonedNode);
@@ -101,12 +82,12 @@ class SourceClassRefactor {
 		}
 	}
 
-	private getUnusedPrivateMovedFields(): IInstanceMemberCode[] {
+	private getUnusedPrivateMovedFields(): InstanceMember[] {
 		const allFields = this.sourceNode.getAllInstanceMembers();
 		const usedFieldNames = new Set(allFields.flatMap((field) => field.getDependencyNames()));
 		const extractedFieldNames = new Set(this.getExtractedFieldNames());
 		return allFields
-			.filter((field) => field.isPrivate)
+			.filter((field) => field.isPrivate())
 			.filter((field) => !usedFieldNames.has(field.name))
 			.filter((field) => extractedFieldNames.has(field.name));
 	}
@@ -119,11 +100,11 @@ class SourceClassRefactor {
 class FieldDependencies {
 	private dependencies: Set<string> = new Set();
 
-	constructor(private node: IClassNode, fieldName: string) {
+	constructor(private node: ClassNode, fieldName: string) {
 		this.fillDependenciesRecursively(fieldName);
 	}
 
-	getAllDependencies(): string[] {
+	getAll(): string[] {
 		return [...this.dependencies.values()];
 	}
 
