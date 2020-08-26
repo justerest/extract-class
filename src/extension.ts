@@ -1,5 +1,11 @@
 import * as vscode from 'vscode';
-import { Project, ClassDeclaration } from 'ts-morph';
+import {
+	Project,
+	ClassDeclaration,
+	ClassInstanceMemberTypes,
+	Scope,
+	StructureKind,
+} from 'ts-morph';
 import { ClassCode } from './ClassCode';
 import { TypescriptClassNode } from './TypescriptClassNode';
 
@@ -22,22 +28,21 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 export class ExtractClassVSCodeCommand {
+	private quickPick: QuickPick = new QuickPick();
+
 	constructor(private textEditor: vscode.TextEditor) {}
 
 	async execute(): Promise<void> {
 		const classDeclaration = this.getSelectedClassDeclaration();
 		const classDeclarationSource = classDeclaration.getFullText();
-		const methodsToExtract = await vscode.window.showQuickPick(
-			[...classDeclaration.getInstanceMembers().map((field) => field.getName())],
-			{ placeHolder: 'Select methods to extract', canPickMany: true },
-		);
+		const methodsToExtract = await this.showQuickPick(classDeclaration);
 		if (!methodsToExtract?.length) {
 			vscode.window.showInformationMessage('Class extraction canceled');
 			return;
 		}
 		const classCode = new ClassCode(new TypescriptClassNode(classDeclaration));
 		const extractedClassCode = classCode.extractClass('ExtractedClass', methodsToExtract);
-		this.replace(
+		await this.replace(
 			classDeclarationSource,
 			`\n\n${classCode.serialize()}\n${extractedClassCode.serialize()}\n`,
 		);
@@ -51,19 +56,45 @@ export class ExtractClassVSCodeCommand {
 		return file.getClassOrThrow(className);
 	}
 
-	private replace(searchValue: string, replaceValue: string): void {
+	private async showQuickPick(classDeclaration: ClassDeclaration): Promise<string[] | undefined> {
+		return this.quickPick.showMethods(classDeclaration);
+	}
+
+	private async replace(searchValue: string, replaceValue: string): Promise<void> {
 		const source = this.textEditor.document.getText();
 		const result = source.replace(searchValue, replaceValue);
-		this.textEditor.edit((edit) => edit.replace(this.getFullDocumentRange(), result));
-		this.formatDocument();
+		await this.textEditor.edit((edit) => edit.replace(this.getFullDocumentRange(), result));
+		await this.formatDocument();
 	}
 
 	private getFullDocumentRange(): vscode.Range {
 		return new vscode.Range(new vscode.Position(0, 0), new vscode.Position(Infinity, Infinity));
 	}
 
-	private formatDocument(): void {
-		console.warn('+formatDocument() not implemented');
+	private async formatDocument(): Promise<void> {
+		await vscode.commands.executeCommand(
+			'vscode.executeFormatDocumentProvider',
+			this.textEditor.document.uri,
+		);
+	}
+}
+
+export class QuickPick {
+	constructor() {}
+
+	async showMethods(classDeclaration: ClassDeclaration): Promise<string[] | undefined> {
+		const selectedItems = await vscode.window.showQuickPick(
+			classDeclaration.getInstanceMembers().map((field) => this.getFieldName(field)),
+			{ placeHolder: 'Select methods to extract', canPickMany: true },
+		);
+		return selectedItems?.map((item) => item.match(/\w+/)?.[0] ?? '');
+	}
+
+	private getFieldName(field: ClassInstanceMemberTypes): string {
+		const scope = field.getScope();
+		const scopeSymbol = scope === Scope.Public ? '+' : scope === Scope.Protected ? '#' : '-';
+		const signatureSymbol = field.getStructure().kind === StructureKind.Method ? '()' : '';
+		return `${scopeSymbol}${field.getName()}${signatureSymbol}`;
 	}
 }
 
