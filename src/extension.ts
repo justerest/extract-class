@@ -20,17 +20,23 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerTextEditorCommand(COMMAND, (textEditor) =>
-			new ExtractClassVSCodeCommand(textEditor).execute(),
+			new ExtractClassCommand(textEditor).execute(),
 		),
 	);
 }
 
 export function deactivate() {}
 
-export class ExtractClassVSCodeCommand {
-	private quickPick: QuickPick = new QuickPick();
+export class ExtractClassCommand {
+	private textDocument: TextDocument = new TextDocument(this.textEditor);
+	private classDeclaration: ClassDeclaration = this.createClassDeclaration();
+	private quickPick: QuickPick = new QuickPick(this.classDeclaration);
 
 	constructor(private textEditor: vscode.TextEditor) {}
+
+	private createClassDeclaration(): ClassDeclaration {
+		return new ClassDeclarationFactory(this.textEditor).create();
+	}
 
 	async execute(): Promise<void> {
 		try {
@@ -41,34 +47,24 @@ export class ExtractClassVSCodeCommand {
 	}
 
 	private async tryExecute(): Promise<void> {
-		const classDeclaration = this.getSelectedClassDeclaration();
-		const classDeclarationSource = classDeclaration.getFullText();
-		const methodsToExtract = await this.showQuickPick(classDeclaration);
-		if (!methodsToExtract?.length) {
+		const fieldsToExtract = await this.quickPick.pickFieldsToExtract();
+		if (!fieldsToExtract?.length) {
 			vscode.window.showInformationMessage('Class extraction canceled');
 			return;
 		}
-		const classRefactor = new ClassRefactor(new TypescriptClassNode(classDeclaration));
-		const extractedClassRefactor = classRefactor.extractClass('ExtractedClass', methodsToExtract);
-		await this.replace(
-			classDeclarationSource,
+		const classRefactor = new ClassRefactor(new TypescriptClassNode(this.classDeclaration));
+		const extractedClassRefactor = classRefactor.extractClass('ExtractedClass', fieldsToExtract);
+		await this.textDocument.replace(
+			this.classDeclaration.getFullText(),
 			`\n\n${classRefactor.serialize()}\n${extractedClassRefactor.serialize()}\n`,
 		);
 	}
+}
 
-	private getSelectedClassDeclaration(): ClassDeclaration {
-		const line = this.textEditor.document.lineAt(this.textEditor.selection.start);
-		const className = line.text.match(/class\s\w+/)![0].replace('class ', '');
-		const project = new Project();
-		const file = project.createSourceFile('', this.textEditor.document.getText());
-		return file.getClassOrThrow(className);
-	}
+export class TextDocument {
+	constructor(private textEditor: vscode.TextEditor) {}
 
-	private async showQuickPick(classDeclaration: ClassDeclaration): Promise<string[] | undefined> {
-		return this.quickPick.showMethods(classDeclaration);
-	}
-
-	private async replace(searchValue: string, replaceValue: string): Promise<void> {
+	async replace(searchValue: string, replaceValue: string): Promise<void> {
 		const source = this.textEditor.document.getText();
 		const result = source.replace(searchValue, replaceValue);
 		await this.textEditor.edit((edit) => edit.replace(this.getFullDocumentRange(), result));
@@ -87,12 +83,24 @@ export class ExtractClassVSCodeCommand {
 	}
 }
 
-export class QuickPick {
-	constructor() {}
+export class ClassDeclarationFactory {
+	constructor(private textEditor: vscode.TextEditor) {}
 
-	async showMethods(classDeclaration: ClassDeclaration): Promise<string[] | undefined> {
+	create(): ClassDeclaration {
+		const line = this.textEditor.document.lineAt(this.textEditor.selection.start);
+		const className = line.text.match(/class\s\w+/)![0].replace('class ', '');
+		const project = new Project();
+		const file = project.createSourceFile('', this.textEditor.document.getText());
+		return file.getClassOrThrow(className);
+	}
+}
+
+export class QuickPick {
+	constructor(private classDeclaration: ClassDeclaration) {}
+
+	async pickFieldsToExtract(): Promise<string[] | undefined> {
 		const selectedItems = await vscode.window.showQuickPick(
-			classDeclaration.getInstanceMembers().map((field) => this.getFieldName(field)),
+			this.classDeclaration.getInstanceMembers().map((field) => this.getFieldName(field)),
 			{ placeHolder: 'Select methods to extract', canPickMany: true },
 		);
 		return selectedItems?.map((item) => item.match(/\w+/)?.[0] ?? '');
