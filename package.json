@@ -15,7 +15,7 @@
 	],
 	"main": "./dist/extension.js",
 	"scripts": {
-		"vscode:prepublish": "webpack --mode development",
+		"vscode:prepublish": "webpack --mode production --progress",
 		"webpack": "webpack --mode development",
 		"watch": "webpack --mode development --watch",
 		"test-compile": "tsc -p ./",
