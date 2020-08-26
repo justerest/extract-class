@@ -57,10 +57,16 @@ class TextDocument {
 	}
 
 	private async formatDocument(): Promise<void> {
-		await vscode.commands.executeCommand(
+		const docUri = this.textEditor.document.uri;
+		const textEdits = (await vscode.commands.executeCommand(
 			'vscode.executeFormatDocumentProvider',
-			this.textEditor.document.uri,
-		);
+			docUri,
+		)) as vscode.TextEdit[];
+		const edit = new vscode.WorkspaceEdit();
+		for (const textEdit of textEdits) {
+			edit.replace(docUri, textEdit.range, textEdit.newText);
+		}
+		await vscode.workspace.applyEdit(edit);
 	}
 }
 
