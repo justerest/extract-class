@@ -120,6 +120,27 @@ describe(ClassCode.name, () => {
 			expectTsClassCode(classCode).toEqual(expected);
 		});
 
+		it('should not remove private dependency method from source if not moved', () => {
+			const source = `
+				class Source{
+					a(){}
+					private	b(){}
+				}
+		`;
+			const expected = `
+				class Source{
+					private	extracted: Extracted = new Extracted();					
+					a(){
+						return this.extracted.a();
+					}
+					private	b(){}
+				}
+			`;
+			const classCode = createClassCode(source);
+			classCode.extractClass('Extracted', ['a']);
+			expectTsClassCode(classCode).toEqual(expected);
+		});
+
 		it('should add dependency methods to extracted class recursively', () => {
 			const source = `
 				class Source{
@@ -382,7 +403,7 @@ describe(ClassCode.name, () => {
 				class Source{
 					private extracted: Extracted = new Extracted();
 
-					constructor(){}
+					constructor(private prop: number){}
 
 					a():void{
 						return	this.extracted.a();

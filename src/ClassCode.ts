@@ -30,13 +30,14 @@ export class ClassCode {
 		const movedFields = this.getMovedFields(extractedClassNode);
 		movedFields.forEach((field) => field.delegateTo(createdField));
 		const movedFieldNames = movedFields.map((field) => field.name);
-		this.deleteUnusedPrivateFieldsRecursively();
+		this.deleteUnusedPrivateMovedFields(movedFieldNames);
 		const existingMethodNames = new Set(
 			this.node.getAllInstanceMembers().map((field) => field.name),
 		);
-		extractedClassCode.markMethodsAsPublic(
-			movedFieldNames.filter((fieldName) => existingMethodNames.has(fieldName)),
-		);
+		extractedClassCode.markMethodsAsPublic([
+			...movedFieldNames.filter((fieldName) => existingMethodNames.has(fieldName)),
+			...fieldNames,
+		]);
 		return extractedClassCode;
 	}
 
@@ -62,20 +63,22 @@ export class ClassCode {
 			.forEach((field) => field.markAsPublic());
 	}
 
-	private deleteUnusedPrivateFieldsRecursively(): void {
-		const fieldsToRemove = this.getUnusedPrivateFields();
+	private deleteUnusedPrivateMovedFields(movedFieldNames: string[]): void {
+		const fieldsToRemove = this.getUnusedPrivateMovedFields(movedFieldNames);
 		fieldsToRemove.forEach((field) => field.remove());
-		if (this.getUnusedPrivateFields().length) {
-			this.deleteUnusedPrivateFieldsRecursively();
+		if (this.getUnusedPrivateMovedFields(movedFieldNames).length) {
+			this.deleteUnusedPrivateMovedFields(movedFieldNames);
 		}
 	}
 
-	private getUnusedPrivateFields(): IInstanceMemberCode[] {
+	private getUnusedPrivateMovedFields(movedFieldNames: string[]): IInstanceMemberCode[] {
 		const allFields = this.node.getAllInstanceMembers();
 		const usedFieldNames = new Set(allFields.flatMap((field) => field.getDependencyNames()));
+		const movedFieldsSet = new Set(movedFieldNames);
 		return allFields
 			.filter((field) => field.isPrivate)
-			.filter((field) => !usedFieldNames.has(field.name));
+			.filter((field) => !usedFieldNames.has(field.name))
+			.filter((field) => movedFieldsSet.has(field.name));
 	}
 
 	serialize(): string {
