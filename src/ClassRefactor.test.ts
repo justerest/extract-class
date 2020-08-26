@@ -314,30 +314,22 @@ describe(ClassRefactor.name, () => {
 			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
-		it('should create getter for moved public property', () => {
+		it('should create getter for moved property', () => {
 			const source = `
 				class Source{
 					prop:number = 1;
-					a():void{
-						console.log(this.prop);
-					}
 				}
 		`;
 			const expected = `
 				class Source{
 					private extracted: Extracted = new Extracted();
-
 					get prop(): number{
 						return this.extracted.prop;
-					}
-
-					a():void{
-						return	this.extracted.a();
 					}
 				}
 			`;
 			const classRefactor = createClassRefactor(source);
-			classRefactor.extractClass('Extracted', ['a']);
+			classRefactor.extractClass('Extracted', ['prop']);
 			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
 
@@ -419,7 +411,8 @@ describe(ClassRefactor.name, () => {
 
 function expectTsClassRefactor(classRefactor: ClassRefactor) {
 	return {
-		toEqual: (expected: string) => expect(formatTs(classRefactor.serialize())).toBe(formatTs(expected)),
+		toEqual: (expected: string) =>
+			expect(formatTs(classRefactor.serialize())).toBe(formatTs(expected)),
 	};
 }
 
