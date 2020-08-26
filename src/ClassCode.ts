@@ -23,62 +23,9 @@ export class ClassCode {
 	constructor(private node: IClassNode) {}
 
 	extractClass(className: string, fieldNames: string[]): ClassCode {
-		const extractedClassNode = this.node.clone(className);
-		const extractedClassCode = new ClassCode(extractedClassNode);
-		extractedClassCode.removeFieldsOmit(fieldNames);
-		const createdField = this.node.initPrivatePropertyFor(extractedClassNode);
-		const movedFields = this.getMovedFields(extractedClassNode);
-		movedFields.forEach((field) => field.delegateTo(createdField));
-		const movedFieldNames = movedFields.map((field) => field.name);
-		this.deleteUnusedPrivateMovedFields(movedFieldNames);
-		const existingMethodNames = new Set(
-			this.node.getAllInstanceMembers().map((field) => field.name),
+		return new ClassCode(
+			ExtractClassOperation.create(this.node, className, fieldNames).getExtractedNode(),
 		);
-		extractedClassCode.markMethodsAsPublic([
-			...movedFieldNames.filter((fieldName) => existingMethodNames.has(fieldName)),
-			...fieldNames,
-		]);
-		return extractedClassCode;
-	}
-
-	private removeFieldsOmit(fieldNames: string[]): void {
-		const allFields = this.node.getAllInstanceMembers();
-		const dependencyFieldNames = fieldNames.flatMap((fieldName) =>
-			new GetFieldDependenciesRecursivelyOperation(this.node).execute(fieldName),
-		);
-		const usedFieldNames = new Set([...fieldNames, ...dependencyFieldNames]);
-		const fieldsToRemove = allFields.filter((field) => !usedFieldNames.has(field.name));
-		fieldsToRemove.forEach((field) => field.remove());
-	}
-
-	private getMovedFields(extractedClassNode: IClassNode): IInstanceMemberCode[] {
-		return extractedClassNode
-			.getAllInstanceMembers()
-			.map((field) => this.node.getInstanceMember(field.name));
-	}
-
-	private markMethodsAsPublic(fieldNames: string[]): void {
-		fieldNames
-			.map((fieldName) => this.node.getInstanceMember(fieldName))
-			.forEach((field) => field.markAsPublic());
-	}
-
-	private deleteUnusedPrivateMovedFields(movedFieldNames: string[]): void {
-		const fieldsToRemove = this.getUnusedPrivateMovedFields(movedFieldNames);
-		fieldsToRemove.forEach((field) => field.remove());
-		if (this.getUnusedPrivateMovedFields(movedFieldNames).length) {
-			this.deleteUnusedPrivateMovedFields(movedFieldNames);
-		}
-	}
-
-	private getUnusedPrivateMovedFields(movedFieldNames: string[]): IInstanceMemberCode[] {
-		const allFields = this.node.getAllInstanceMembers();
-		const usedFieldNames = new Set(allFields.flatMap((field) => field.getDependencyNames()));
-		const movedFieldsSet = new Set(movedFieldNames);
-		return allFields
-			.filter((field) => field.isPrivate)
-			.filter((field) => !usedFieldNames.has(field.name))
-			.filter((field) => movedFieldsSet.has(field.name));
 	}
 
 	serialize(): string {
@@ -86,23 +33,129 @@ export class ClassCode {
 	}
 }
 
-class GetFieldDependenciesRecursivelyOperation {
-	private dependencies: Set<string> = new Set();
-
-	constructor(private node: IClassNode) {}
-
-	execute(fieldName: string): string[] {
-		return [...this.getFieldDependenciesRecursively(fieldName)];
+class ExtractClassOperation {
+	static create(
+		sourceNode: IClassNode,
+		extractingClassName: string,
+		fieldsToExtract: string[],
+	): ExtractClassOperation {
+		return new ExtractClassOperation(
+			sourceNode,
+			CloneClassOperation.create(sourceNode, extractingClassName, fieldsToExtract).getClonedNode(),
+			new Set(fieldsToExtract),
+		);
 	}
 
-	private *getFieldDependenciesRecursively(fieldName: string): Iterable<string> {
+	private extractedFields: IInstanceMemberCode[] = this.extractedNode.getAllInstanceMembers();
+
+	private constructor(
+		private sourceNode: IClassNode,
+		private extractedNode: IClassNode,
+		private fieldsToExtract: Set<string>,
+	) {
+		this.execute();
+	}
+
+	getExtractedNode(): IClassNode {
+		return this.extractedNode;
+	}
+
+	private execute(): void {
+		this.delegateCallsToExtractedClass();
+		this.deleteUnusedPrivateMovedFieldsFromSource();
+		this.markExtractedFieldsAsPublic();
+	}
+
+	private delegateCallsToExtractedClass(): void {
+		const extractedClassProp = this.sourceNode.initPrivatePropertyFor(this.extractedNode);
+		const movedFields = this.extractedFields.map((field) =>
+			this.sourceNode.getInstanceMember(field.name),
+		);
+		movedFields.forEach((field) => field.delegateTo(extractedClassProp));
+	}
+
+	private deleteUnusedPrivateMovedFieldsFromSource(): void {
+		const fieldsToRemove = this.getUnusedPrivateMovedFieldsFromSource();
+		fieldsToRemove.forEach((field) => field.remove());
+		if (this.getUnusedPrivateMovedFieldsFromSource().length) {
+			this.deleteUnusedPrivateMovedFieldsFromSource();
+		}
+	}
+
+	private getUnusedPrivateMovedFieldsFromSource(): IInstanceMemberCode[] {
+		const allFields = this.sourceNode.getAllInstanceMembers();
+		const usedFieldNames = new Set(allFields.flatMap((field) => field.getDependencyNames()));
+		const extractedFieldNames = new Set(this.extractedFields.map((field) => field.name));
+		return allFields
+			.filter((field) => field.isPrivate)
+			.filter((field) => !usedFieldNames.has(field.name))
+			.filter((field) => extractedFieldNames.has(field.name));
+	}
+
+	private markExtractedFieldsAsPublic(): void {
+		const existingFieldNames = new Set(
+			this.sourceNode.getAllInstanceMembers().map((field) => field.name),
+		);
+		this.extractedFields
+			.filter((field) => this.fieldsToExtract.has(field.name) || existingFieldNames.has(field.name))
+			.forEach((field) => field.markAsPublic());
+	}
+}
+
+class CloneClassOperation {
+	static create(
+		sourceNode: IClassNode,
+		newClassName: string,
+		fieldsToExtract: string[],
+	): CloneClassOperation {
+		return new CloneClassOperation(sourceNode.clone(newClassName), fieldsToExtract);
+	}
+
+	private constructor(private clonedNode: IClassNode, private fieldsToExtract: string[]) {
+		this.execute();
+	}
+
+	getClonedNode(): IClassNode {
+		return this.clonedNode;
+	}
+
+	private execute() {
+		this.removeFieldsOmitDependencies();
+	}
+
+	private removeFieldsOmitDependencies(): void {
+		const allFields = this.clonedNode.getAllInstanceMembers();
+		const dependencyFieldNames = this.fieldsToExtract.flatMap((fieldName) =>
+			this.getFieldDependenciesRecursively(fieldName),
+		);
+		const usedFieldNames = new Set([...this.fieldsToExtract, ...dependencyFieldNames]);
+		const fieldsToRemove = allFields.filter((field) => !usedFieldNames.has(field.name));
+		fieldsToRemove.forEach((field) => field.remove());
+	}
+
+	private getFieldDependenciesRecursively(fieldName: string): string[] {
+		return new FieldDependencies(this.clonedNode, fieldName).getAllDependencies();
+	}
+}
+
+class FieldDependencies {
+	private dependencies: Set<string> = new Set();
+
+	constructor(private node: IClassNode, fieldName: string) {
+		this.fillDependenciesRecursively(fieldName);
+	}
+
+	getAllDependencies(): string[] {
+		return [...this.dependencies.values()];
+	}
+
+	private fillDependenciesRecursively(fieldName: string): void {
 		const names = this.node.getInstanceMember(fieldName).getDependencyNames();
 		for (const name of names) {
 			if (!this.dependencies.has(name)) {
 				this.dependencies.add(name);
-				yield name;
+				this.fillDependenciesRecursively(name);
 			}
-			yield* this.getFieldDependenciesRecursively(name);
 		}
 	}
 }
