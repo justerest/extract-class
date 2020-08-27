@@ -51,9 +51,9 @@ class ExtractingClassRefactor {
 		const existingFieldNames = new Set(
 			this.sourceNode.getAllInstanceMembers().map((field) => field.name),
 		);
-		const extractedFields = this.clonedNode.getAllInstanceMembers();
 		const fieldsToExtract = new Set(this.fieldsToExtract);
-		extractedFields
+		this.clonedNode
+			.getAllInstanceMembers()
 			.filter((field) => fieldsToExtract.has(field.name) || existingFieldNames.has(field.name))
 			.forEach((field) => field.markAsPublic());
 	}
@@ -64,11 +64,11 @@ class ExtractingClassRefactor {
 }
 
 class SourceClassRefactor {
-	constructor(private sourceNode: ClassNode, private clonedNode: ClassNode) {}
+	constructor(private sourceNode: ClassNode, private extractedNode: ClassNode) {}
 
 	delegateCallsToExtractedClass(): void {
-		const extractedClassProp = this.sourceNode.initPrivatePropertyFor(this.clonedNode);
-		this.clonedNode
+		const extractedClassProp = this.sourceNode.initPrivatePropertyFor(this.extractedNode);
+		this.extractedNode
 			.getAllInstanceMembers()
 			.map((field) => this.sourceNode.getInstanceMember(field.name))
 			.forEach((field) => field.delegateTo(extractedClassProp));
@@ -93,7 +93,7 @@ class SourceClassRefactor {
 	}
 
 	private getExtractedFieldNames(): string[] {
-		return this.clonedNode.getAllInstanceMembers().map((field) => field.name);
+		return this.extractedNode.getAllInstanceMembers().map((field) => field.name);
 	}
 }
 

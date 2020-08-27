@@ -205,16 +205,14 @@ describe(ClassRefactor.name, () => {
 					private a(){
 						this.b();
 					}
-
-					d(){
-						this.a();
-					}
 					
 					private	b(){
 						this.c();
 					}
 
 					private c(){}
+
+					d(){}
 				}
 		`;
 			const expected = `
