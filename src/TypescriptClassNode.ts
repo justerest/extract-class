@@ -2,18 +2,17 @@ import { ClassNode, InstanceMember } from './ClassNode';
 import {
 	ClassDeclaration,
 	ClassInstanceMemberTypes,
-	Project,
 	MethodDeclaration,
 	Scope,
 	PropertyDeclaration,
 	ParameterDeclaration,
 } from 'ts-morph';
 import { camelCase } from 'lodash';
+import { parseClassDeclaration } from './parseClassDeclaration';
 
 export class TypescriptClassNode implements ClassNode {
 	static from(source: string): TypescriptClassNode {
-		const className = source.match(/class \w+/)?.[0].replace('class ', '') ?? '';
-		const node = new Project().createSourceFile('', source).getClassOrThrow(className);
+		const node = parseClassDeclaration(source);
 		return new TypescriptClassNode(node);
 	}
 

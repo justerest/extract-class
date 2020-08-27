@@ -1,25 +1,16 @@
 import * as vscode from 'vscode';
-import {
-	Project,
-	ClassDeclaration,
-	ClassInstanceMemberTypes,
-	Scope,
-	StructureKind,
-} from 'ts-morph';
+import { Project, ClassDeclaration, ParameterDeclaration } from 'ts-morph';
 import { ClassRefactor } from './ClassRefactor';
 import { TypescriptClassNode } from './TypescriptClassNode';
+import { Field } from './Field';
 
 export class ExtractClassCommand {
-	private textDocument: TextDocument = new TextDocument(this.textEditor);
-	private classDeclaration: ClassDeclaration = this.createClassDeclaration();
-	private quickPick: QuickPick = new QuickPick(this.classDeclaration);
-	private sourceClassText = this.classDeclaration.getFullText();
+	private readonly extractingClassName = 'ExtractedClass';
+
+	private selectedClass: SelectedClass = new SelectedClass(this.textEditor);
+	private quickPick: QuickPick = new QuickPick(this.selectedClass);
 
 	constructor(private textEditor: vscode.TextEditor) {}
-
-	private createClassDeclaration(): ClassDeclaration {
-		return new ClassDeclarationFactory(this.textEditor).create();
-	}
 
 	async execute(): Promise<void> {
 		try {
@@ -31,13 +22,40 @@ export class ExtractClassCommand {
 
 	private async tryExecute(): Promise<void> {
 		const fieldsToExtract = await this.quickPick.pickFieldsToExtract();
-		if (!fieldsToExtract?.length) {
+		if (fieldsToExtract?.length) {
+			await this.selectedClass.extractClassAndWrite(this.extractingClassName, fieldsToExtract);
+		} else {
 			vscode.window.showInformationMessage('Class extraction canceled');
-			return;
 		}
-		const classRefactor = new ClassRefactor(new TypescriptClassNode(this.classDeclaration));
-		const extractedClassRefactor = classRefactor.extractClass('ExtractedClass', fieldsToExtract);
-		const result = `${classRefactor.serialize()}\n\n${extractedClassRefactor.serialize()}\n`;
+	}
+}
+
+class SelectedClass {
+	private textDocument: TextDocument = new TextDocument(this.textEditor);
+	private node: ClassDeclaration = this.parseClassNodeAtCurrentLine();
+	private sourceClassText = this.node.getFullText();
+
+	constructor(private textEditor: vscode.TextEditor) {}
+
+	private parseClassNodeAtCurrentLine(): ClassDeclaration {
+		const line = this.textEditor.document.lineAt(this.textEditor.selection.start);
+		const className = line.text.match(/class \w+/)![0].replace('class ', '');
+		const project = new Project();
+		const file = project.createSourceFile('', this.textEditor.document.getText());
+		return file.getClassOrThrow(className);
+	}
+
+	getFields(): Field[] {
+		return this.node
+			.getInstanceMembers()
+			.filter((field) => !(field instanceof ParameterDeclaration))
+			.map(Field.fromInstanceMember);
+	}
+
+	async extractClassAndWrite(className: string, fieldsToExtract: string[]): Promise<void> {
+		const source = new ClassRefactor(new TypescriptClassNode(this.node));
+		const extracted = source.extractClass(className, fieldsToExtract);
+		const result = `${source.serialize()}\n\n${extracted.serialize()}\n`;
 		await this.textDocument.replace(this.sourceClassText, result);
 	}
 }
@@ -70,33 +88,15 @@ class TextDocument {
 	}
 }
 
-class ClassDeclarationFactory {
-	constructor(private textEditor: vscode.TextEditor) {}
-
-	create(): ClassDeclaration {
-		const line = this.textEditor.document.lineAt(this.textEditor.selection.start);
-		const className = line.text.match(/class\s\w+/)![0].replace('class ', '');
-		const project = new Project();
-		const file = project.createSourceFile('', this.textEditor.document.getText());
-		return file.getClassOrThrow(className);
-	}
-}
-
 class QuickPick {
-	constructor(private classDeclaration: ClassDeclaration) {}
+	constructor(private selectedClass: SelectedClass) {}
 
 	async pickFieldsToExtract(): Promise<string[] | undefined> {
-		const selectedItems = await vscode.window.showQuickPick(
-			this.classDeclaration.getInstanceMembers().map((field) => this.getFieldName(field)),
-			{ placeHolder: 'Select methods to extract', canPickMany: true },
-		);
-		return selectedItems?.map((item) => item.match(/\w+/)?.[0] ?? '');
-	}
-
-	private getFieldName(field: ClassInstanceMemberTypes): string {
-		const scope = field.getScope();
-		const scopeSymbol = scope === Scope.Public ? '+' : scope === Scope.Protected ? '#' : '-';
-		const signatureSymbol = field.getStructure().kind === StructureKind.Method ? '()' : '';
-		return `${scopeSymbol}${field.getName()}${signatureSymbol}`;
+		const umlNotations = this.selectedClass.getFields().map((field) => field.toUmlNotation());
+		const selectedItems = await vscode.window.showQuickPick(umlNotations, {
+			placeHolder: 'Select methods to extract',
+			canPickMany: true,
+		});
+		return selectedItems?.map((fieldName) => Field.parseFieldNameFromUmlNotation(fieldName) ?? '');
 	}
 }
