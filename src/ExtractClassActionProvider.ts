@@ -6,13 +6,10 @@ export class ExtractClassActionProvider implements vscode.CodeActionProvider {
 		document: vscode.TextDocument,
 		range: vscode.Range | vscode.Selection,
 	): vscode.ProviderResult<(vscode.Command | vscode.CodeAction)[]> {
-		if (this.isClassDeclarationLine(document.lineAt(range.start.line))) {
+		const matcher = new ExtractClassActionProviderMatcher(document, range);
+		if (matcher.isCursorAtClassNameRange()) {
 			return [this.createExtractClassCommand()];
 		}
-	}
-
-	private isClassDeclarationLine(line: vscode.TextLine): boolean {
-		return !!line.text.match(/class \w+/);
 	}
 
 	private createExtractClassCommand() {
@@ -23,5 +20,44 @@ export class ExtractClassActionProvider implements vscode.CodeActionProvider {
 			tooltip: 'Select instance members to extract',
 		};
 		return action;
+	}
+}
+
+class ExtractClassActionProviderMatcher {
+	constructor(
+		private document: vscode.TextDocument,
+		private range: vscode.Range | vscode.Selection,
+	) {}
+
+	isCursorAtClassNameRange(): boolean {
+		if (this.isClassDeclarationLine()) {
+			return this.getClassNameRange().contains(this.range);
+		}
+		return false;
+	}
+
+	private isClassDeclarationLine(): boolean {
+		return !!this.getClassNameAtLine();
+	}
+
+	private getClassNameAtLine(): string {
+		return (
+			this.getLineText()
+				.match(/class \w+/)?.[0]
+				.replace('class ', '') ?? ''
+		);
+	}
+
+	private getLineText(): string {
+		return this.document.lineAt(this.range.start.line).text;
+	}
+
+	private getClassNameRange(): vscode.Range {
+		const className = this.getClassNameAtLine();
+		const classNameStartIndex = this.getLineText().indexOf(className);
+		return new vscode.Range(
+			new vscode.Position(this.range.start.line, classNameStartIndex - 1),
+			new vscode.Position(this.range.start.line, classNameStartIndex + className.length),
+		);
 	}
 }
