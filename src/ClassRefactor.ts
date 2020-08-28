@@ -24,7 +24,11 @@ class ExtractingClassRefactor {
 		className: string,
 		fieldNames: string[],
 	): ExtractingClassRefactor {
-		return new ExtractingClassRefactor(sourceNode, sourceNode.clone(className), fieldNames);
+		return new ExtractingClassRefactor(
+			sourceNode,
+			sourceNode.createClassNodeWithSameInstanceMembers(className),
+			fieldNames,
+		);
 	}
 
 	private constructor(
@@ -34,7 +38,7 @@ class ExtractingClassRefactor {
 	) {}
 
 	removeFieldsOmitExtractingWithDependencies(): void {
-		const allFields = this.clonedNode.getAllInstanceMembers();
+		const allFields = this.clonedNode.getInstanceMembers();
 		const dependencyFieldNames = this.fieldsToExtract.flatMap((fieldName) =>
 			this.getFieldDependenciesRecursively(fieldName),
 		);
@@ -49,11 +53,11 @@ class ExtractingClassRefactor {
 
 	markDelegatedFieldsAsPublic(): void {
 		const existingFieldNames = new Set(
-			this.sourceNode.getAllInstanceMembers().map((field) => field.name),
+			this.sourceNode.getInstanceMembers().map((field) => field.name),
 		);
 		const fieldsToExtract = new Set(this.fieldsToExtract);
 		this.clonedNode
-			.getAllInstanceMembers()
+			.getInstanceMembers()
 			.filter((field) => fieldsToExtract.has(field.name) || existingFieldNames.has(field.name))
 			.forEach((field) => field.markAsPublic());
 	}
@@ -69,7 +73,7 @@ class SourceClassRefactor {
 	delegateCallsToExtractedClass(): void {
 		const extractedClassProp = this.sourceNode.initPrivatePropertyFor(this.extractedNode);
 		this.extractedNode
-			.getAllInstanceMembers()
+			.getInstanceMembers()
 			.map((field) => this.sourceNode.getInstanceMember(field.name))
 			.forEach((field) => field.delegateTo(extractedClassProp));
 	}
@@ -83,7 +87,7 @@ class SourceClassRefactor {
 	}
 
 	private getUnusedPrivateMovedFields(): InstanceMember[] {
-		const allFields = this.sourceNode.getAllInstanceMembers();
+		const allFields = this.sourceNode.getInstanceMembers();
 		const usedFieldNames = new Set(allFields.flatMap((field) => field.getDependencyNames()));
 		const extractedFieldNames = new Set(this.getExtractedFieldNames());
 		return allFields
@@ -93,7 +97,7 @@ class SourceClassRefactor {
 	}
 
 	private getExtractedFieldNames(): string[] {
-		return this.extractedNode.getAllInstanceMembers().map((field) => field.name);
+		return this.extractedNode.getInstanceMembers().map((field) => field.name);
 	}
 }
 

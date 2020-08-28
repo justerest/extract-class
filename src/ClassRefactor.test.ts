@@ -404,6 +404,25 @@ describe(ClassRefactor.name, () => {
 			classRefactor.extractClass('Extracted', ['a']);
 			expectTsClassRefactor(classRefactor).toEqual(expected);
 		});
+
+		it('extracted class should not contains source class decorators, static methods, interfaces', () => {
+			const source = `
+				@Decorator()
+				class Source implements ISource{
+					static method(){}
+
+					a():void{}
+				}
+		`;
+			const expected = `
+				class Extracted{
+					a():void{}
+				}
+			`;
+			const classRefactor = createClassRefactor(source);
+			const extractedRefactor = classRefactor.extractClass('Extracted', ['a']);
+			expectTsClassRefactor(extractedRefactor).toEqual(expected);
+		});
 	});
 });
 

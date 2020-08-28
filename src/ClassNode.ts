@@ -1,9 +1,9 @@
 export interface ClassNode {
 	name: string;
-	getAllInstanceMembers(): InstanceMember[];
+	getInstanceMembers(): InstanceMember[];
 	getInstanceMember(fieldName: string): InstanceMember;
 	initPrivatePropertyFor(classNode: ClassNode): InstanceMember;
-	clone(name: string): ClassNode;
+	createClassNodeWithSameInstanceMembers(name: string): ClassNode;
 	serialize(): string;
 }
 

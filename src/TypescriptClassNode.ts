@@ -22,7 +22,7 @@ export class TypescriptClassNode implements ClassNode {
 
 	constructor(private node: ClassDeclaration) {}
 
-	getAllInstanceMembers(): InstanceMember[] {
+	getInstanceMembers(): InstanceMember[] {
 		return this.node
 			.getInstanceMembers()
 			.map((field) => TypescriptInstanceMemberCode.create(field));
@@ -51,8 +51,12 @@ export class TypescriptClassNode implements ClassNode {
 		return this.node.getConstructors()[0]?.getParameters() ?? [];
 	}
 
-	clone(name: string): ClassNode {
-		return TypescriptClassNode.from(this.serialize().replace(/class \w+/, `class ${name}`));
+	createClassNodeWithSameInstanceMembers(name: string): ClassNode {
+		const clone = TypescriptClassNode.from(this.serialize().replace(/class \w+/, `class ${name}`));
+		clone.node.getStaticMembers().forEach((field) => field.remove());
+		clone.node.getDecorators().forEach((field) => field.remove());
+		clone.node.getImplements().forEach((_, i) => clone.node.removeImplements(i));
+		return clone;
 	}
 
 	serialize(): string {
