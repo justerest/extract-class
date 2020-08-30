@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Project, ClassDeclaration, ParameterDeclaration } from 'ts-morph';
 import { ClassRefactor } from './ClassRefactor';
 import { TypescriptClassNode } from './TypescriptClassNode';
-import { Field } from './Field';
+import { UmlNotation } from './UmlNotation';
 
 export class ExtractClassCommand {
 	private readonly extractingClassName = 'ExtractedClass';
@@ -45,11 +45,11 @@ class SelectedClass {
 		return file.getClassOrThrow(className);
 	}
 
-	getFields(): Field[] {
+	getFieldUmlNotations(): UmlNotation[] {
 		return this.node
 			.getInstanceMembers()
 			.filter((field) => !(field instanceof ParameterDeclaration))
-			.map(Field.fromInstanceMember);
+			.map(UmlNotation.fromInstanceMember);
 	}
 
 	async extractClassAndWrite(className: string, fieldsToExtract: string[]): Promise<void> {
@@ -92,11 +92,17 @@ class QuickPick {
 	constructor(private selectedClass: SelectedClass) {}
 
 	async pickFieldsToExtract(): Promise<string[] | undefined> {
-		const umlNotations = this.selectedClass.getFields().map((field) => field.toUmlNotation());
+		const umlNotations = this.getFieldUmlNotations();
 		const selectedItems = await vscode.window.showQuickPick(umlNotations, {
 			placeHolder: 'Select methods to extract',
 			canPickMany: true,
 		});
-		return selectedItems?.map((fieldName) => Field.parseFieldNameFromUmlNotation(fieldName) ?? '');
+		return selectedItems?.map(
+			(fieldName) => UmlNotation.parseFieldNameFromUmlNotation(fieldName) ?? '',
+		);
+	}
+
+	private getFieldUmlNotations(): string[] {
+		return this.selectedClass.getFieldUmlNotations().map((field) => field.serialize());
 	}
 }
