@@ -5,58 +5,72 @@ import { TypescriptClassNode } from './TypescriptClassNode';
 import { UmlNotation } from './UmlNotation';
 
 export class ExtractClassCommand {
+	static execute(textEditor: vscode.TextEditor): Promise<void> {
+		const classNode = new ClassParser(textEditor).parseClassAtCurrentLine();
+		const quickPick = new QuickPick(classNode);
+		const textDocument = new TextDocument(textEditor);
+		const operation = new ExtractClassCommand(classNode, quickPick, textDocument);
+		return operation.execute();
+	}
+
 	private readonly extractingClassName = 'ExtractedClass';
 
-	private selectedClass: SelectedClass = new SelectedClass(this.textEditor);
-	private quickPick: QuickPick = new QuickPick(this.selectedClass);
-
-	constructor(private textEditor: vscode.TextEditor) {}
+	private constructor(
+		private node: ClassDeclaration,
+		private quickPick: QuickPick,
+		private textDocument: TextDocument,
+	) {}
 
 	async execute(): Promise<void> {
 		try {
 			await this.tryExecute();
 		} catch (error) {
-			vscode.window.showErrorMessage(JSON.stringify(error));
+			vscode.window.showErrorMessage('Class extraction failed');
 		}
 	}
 
 	private async tryExecute(): Promise<void> {
 		const fieldsToExtract = await this.quickPick.pickFieldsToExtract();
 		if (fieldsToExtract?.length) {
-			await this.selectedClass.extractClassAndWrite(this.extractingClassName, fieldsToExtract);
+			await this.extractClassAndWrite(fieldsToExtract);
 		} else {
 			vscode.window.showInformationMessage('Class extraction canceled');
 		}
 	}
+
+	private async extractClassAndWrite(fieldsToExtract: string[]): Promise<void> {
+		const initialSourceText = this.node.getFullText();
+		const source = new ClassRefactor(new TypescriptClassNode(this.node));
+		const extracted = source.extractClass(this.extractingClassName, fieldsToExtract);
+		await this.textDocument.replace(initialSourceText, this.getResultString(source, extracted));
+	}
+
+	private getResultString(source: ClassRefactor, extracted: ClassRefactor): string {
+		return `${source.serialize()}\n\n${extracted.serialize()}`;
+	}
 }
 
-class SelectedClass {
-	private textDocument: TextDocument = new TextDocument(this.textEditor);
-	private node: ClassDeclaration = this.parseClassNodeAtCurrentLine();
-	private sourceClassText = this.node.getFullText();
-
+class ClassParser {
 	constructor(private textEditor: vscode.TextEditor) {}
 
-	private parseClassNodeAtCurrentLine(): ClassDeclaration {
-		const line = this.textEditor.document.lineAt(this.textEditor.selection.start);
-		const className = line.text.match(/class \w+/)![0].replace('class ', '');
+	parseClassAtCurrentLine(): ClassDeclaration {
+		return this.findClassAtFile(this.getClassNameAtCurrentLine());
+	}
+
+	private getClassNameAtCurrentLine() {
+		return this.getCurrentLineText()
+			.match(/class \w+/)![0]
+			.replace('class ', '');
+	}
+
+	private getCurrentLineText(): string {
+		return this.textEditor.document.lineAt(this.textEditor.selection.start).text;
+	}
+
+	private findClassAtFile(className: string): ClassDeclaration {
 		const project = new Project();
 		const file = project.createSourceFile('', this.textEditor.document.getText());
 		return file.getClassOrThrow(className);
-	}
-
-	getFieldUmlNotations(): UmlNotation[] {
-		return this.node
-			.getInstanceMembers()
-			.filter((field) => !(field instanceof ParameterDeclaration))
-			.map(UmlNotation.fromInstanceMember);
-	}
-
-	async extractClassAndWrite(className: string, fieldsToExtract: string[]): Promise<void> {
-		const source = new ClassRefactor(new TypescriptClassNode(this.node));
-		const extracted = source.extractClass(className, fieldsToExtract);
-		const result = `${source.serialize()}\n\n${extracted.serialize()}\n`;
-		await this.textDocument.replace(this.sourceClassText, result);
 	}
 }
 
@@ -89,7 +103,7 @@ class TextDocument {
 }
 
 class QuickPick {
-	constructor(private selectedClass: SelectedClass) {}
+	constructor(private node: ClassDeclaration) {}
 
 	async pickFieldsToExtract(): Promise<string[] | undefined> {
 		const umlNotations = this.getFieldUmlNotations();
@@ -103,6 +117,10 @@ class QuickPick {
 	}
 
 	private getFieldUmlNotations(): string[] {
-		return this.selectedClass.getFieldUmlNotations().map((field) => field.serialize());
+		return this.node
+			.getInstanceMembers()
+			.filter((field) => !(field instanceof ParameterDeclaration))
+			.map(UmlNotation.fromInstanceMember)
+			.map((field) => field.serialize());
 	}
 }

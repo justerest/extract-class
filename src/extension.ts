@@ -12,7 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerTextEditorCommand(EXTRACT_CLASS_COMMAND, (textEditor) =>
-			new ExtractClassCommand(textEditor).execute(),
+			ExtractClassCommand.execute(textEditor),
 		),
 	);
 }
