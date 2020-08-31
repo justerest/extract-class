@@ -18,7 +18,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should delegate call to new property', () => {
@@ -41,7 +41,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should add dependency method to new class', () => {
@@ -65,7 +65,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should remove private dependency method from source if not used', () => {
@@ -89,7 +89,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should remove private dependency method from source if not used recursively', () => {
@@ -117,7 +117,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should not remove private dependency method from source if not moved', () => {
@@ -138,7 +138,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should add dependency methods to extracted class recursively', () => {
@@ -170,7 +170,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should not add unused private methods to extracted class', () => {
@@ -196,7 +196,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should mark moved private methods to extracted class as public', () => {
@@ -230,7 +230,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should mark moved private dependency methods to extracted class as public', () => {
@@ -267,7 +267,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should delegate moved private methods to extracted class prop', () => {
@@ -309,7 +309,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should create getter for moved property', () => {
@@ -328,7 +328,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['prop']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should init new class with params', () => {
@@ -354,7 +354,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('should move ctor fields to extracted class if used', () => {
@@ -378,7 +378,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedClassRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedClassRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedClassRefactor).toEqualString(expected);
 		});
 
 		it('should not init new class with unused params', () => {
@@ -402,7 +402,7 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(classRefactor).toEqual(expected);
+			expectTsClassRefactor(classRefactor).toEqualString(expected);
 		});
 
 		it('extracted class should not contains source class decorators, static methods, interfaces', () => {
@@ -421,14 +421,14 @@ describe(ClassRefactor.name, () => {
 			`;
 			const classRefactor = createClassRefactor(source);
 			const extractedRefactor = classRefactor.extractClass('Extracted', ['a']);
-			expectTsClassRefactor(extractedRefactor).toEqual(expected);
+			expectTsClassRefactor(extractedRefactor).toEqualString(expected);
 		});
 	});
 });
 
 function expectTsClassRefactor(classRefactor: ClassRefactor) {
 	return {
-		toEqual: (expected: string) =>
+		toEqualString: (expected: string) =>
 			expect(formatTs(classRefactor.serialize())).toBe(formatTs(expected)),
 	};
 }

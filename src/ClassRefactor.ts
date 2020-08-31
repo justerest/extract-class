@@ -67,6 +67,28 @@ class ExtractingClassRefactor {
 	}
 }
 
+class FieldDependencies {
+	private dependencies: Set<string> = new Set();
+
+	constructor(private node: ClassNode, fieldName: string) {
+		this.fillDependenciesRecursively(fieldName);
+	}
+
+	getAll(): string[] {
+		return [...this.dependencies.values()];
+	}
+
+	private fillDependenciesRecursively(fieldName: string): void {
+		const names = this.node.getInstanceMember(fieldName).getDependencyNames();
+		for (const name of names) {
+			if (!this.dependencies.has(name)) {
+				this.dependencies.add(name);
+				this.fillDependenciesRecursively(name);
+			}
+		}
+	}
+}
+
 class SourceClassRefactor {
 	constructor(private sourceNode: ClassNode, private extractedNode: ClassNode) {}
 
@@ -98,27 +120,5 @@ class SourceClassRefactor {
 
 	private getExtractedFieldNames(): string[] {
 		return this.extractedNode.getInstanceMembers().map((field) => field.name);
-	}
-}
-
-class FieldDependencies {
-	private dependencies: Set<string> = new Set();
-
-	constructor(private node: ClassNode, fieldName: string) {
-		this.fillDependenciesRecursively(fieldName);
-	}
-
-	getAll(): string[] {
-		return [...this.dependencies.values()];
-	}
-
-	private fillDependenciesRecursively(fieldName: string): void {
-		const names = this.node.getInstanceMember(fieldName).getDependencyNames();
-		for (const name of names) {
-			if (!this.dependencies.has(name)) {
-				this.dependencies.add(name);
-				this.fillDependenciesRecursively(name);
-			}
-		}
 	}
 }
