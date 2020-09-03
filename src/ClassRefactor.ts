@@ -4,13 +4,14 @@ export class ClassRefactor {
 	constructor(private node: ClassNode) {}
 
 	extractClass(className: string, fieldNames: string[]): ClassRefactor {
-		const extracted = ExtractingClassRefactor.create(this.node, className, fieldNames);
-		const source = new SourceClassRefactor(this.node, extracted.getNode());
+		const extractingNode = this.node.createClassNodeWithSameInstanceMembers(className);
+		const extracted = new ExtractingClassRefactor(this.node, extractingNode, fieldNames);
+		const source = new SourceClassRefactor(this.node, extractingNode);
 		extracted.removeFieldsOmitExtractingWithDependencies();
 		source.delegateCallsToExtractedClass();
 		source.deleteUnusedPrivateMovedFields();
 		extracted.markDelegatedFieldsAsPublic();
-		return new ClassRefactor(extracted.getNode());
+		return new ClassRefactor(extractingNode);
 	}
 
 	serialize(): string {
@@ -19,19 +20,7 @@ export class ClassRefactor {
 }
 
 class ExtractingClassRefactor {
-	static create(
-		sourceNode: ClassNode,
-		className: string,
-		fieldNames: string[],
-	): ExtractingClassRefactor {
-		return new ExtractingClassRefactor(
-			sourceNode,
-			sourceNode.createClassNodeWithSameInstanceMembers(className),
-			fieldNames,
-		);
-	}
-
-	private constructor(
+	constructor(
 		private sourceNode: ClassNode,
 		private clonedNode: ClassNode,
 		private fieldsToExtract: string[],
@@ -60,10 +49,6 @@ class ExtractingClassRefactor {
 			.getInstanceMembers()
 			.filter((field) => fieldsToExtract.has(field.name) || existingFieldNames.has(field.name))
 			.forEach((field) => field.markAsPublic());
-	}
-
-	getNode(): ClassNode {
-		return this.clonedNode;
 	}
 }
 
